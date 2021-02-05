@@ -1,0 +1,26 @@
+{
+  "extends": "./node_modules/poetic/config/typescript/tsconfig.json",
+
+  "compilerOptions": {
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "noUnusedParameters": false,
+    "target": "ES2019",
+    "allowJs": true,
+    "noImplicitAny": false,
+    "moduleResolution": "node",
+    "sourceMap": true,
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": {
+      "*": ["node_modules/*", "src/types/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["__my-test__/**/*", "docs/**/*"],
+  "typeDocOptions": {
+    "mode": "modules",
+    "out": "docs"
+  }
+}
