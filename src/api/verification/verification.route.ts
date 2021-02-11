@@ -6,7 +6,7 @@ import { VerificationController} from './verification.controller';
 
 export const verificationRouter = express.Router();
 
-verificationRouter.post(
+verificationRouter.get(
   "/bvnVerification",
   inputValidator({ query: BVNSchema }),
   new VerificationController().bvnVerification

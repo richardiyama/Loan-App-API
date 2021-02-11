@@ -337,40 +337,42 @@ export class LoanService extends BaseLoanService {
     }
   }
 
- 
 
-  public processLoanEvaluation = async (id: any) => {
+
+  public processLoanEvaluation = async (req: any) => {
     try {
-    let businessScore:any
-    let employeeScore:any
-    let loanEvaluation:any 
-    const checkUser =  await User.findOne({ _id: id });
-    let result = await this.getBusinessLoanScore(id)
-    //console.log(result)
-    let resultTwo = await this.getCustomerScore(id)
-    let resultThree = await this.getEmployeeLoanScore(id)
-    //console.log(resultTwo)
-    if(checkUser){
       
-      if(checkUser.role === "Business Owner"){
-      // console.log(checkUser.role)
-     businessScore = result + resultTwo
-     loanEvaluation = await this.scoreSelfEmployedGrading(businessScore)
-       
+      let businessScore: any
+      let employeeScore: any
+      let loanEvaluation: any
+      const checkUser = await User.findOne({ _id: req.params.id });
+     let result = await this.getBusinessLoanScore(req.params.id);
+      //console.log(result)
+    // console.log(checkUser)
+     let resultTwo = await this.getEmployeeLoanScore(req.params.id);
+     // console.log(resultTwo)
+      if (checkUser) {
+
+        if (checkUser.role === "Business Owner") {
+          // console.log(checkUser.role)
+         businessScore = result
+          loanEvaluation = await this.scoreSelfEmployedGrading(businessScore)
+
+        }
+
+        if (checkUser.role === "Employee") {
+          // console.log(checkUser.role)
+          employeeScore = resultTwo
+          loanEvaluation = await this.scoreEmployedGrading(employeeScore)
+
+        }
+        //console.log(employeeScore)
+        //console.log(loanEvaluation)
+        return loanEvaluation;
       }
 
-      if(checkUser.role === "Employee"){
-        // console.log(checkUser.role)
-       employeeScore = resultThree + resultTwo
-       loanEvaluation = await this.scoreEmployedGrading(employeeScore)
-         
-        }
-        console.log(employeeScore)
-      console.log(loanEvaluation)
-    }
-  
-     
-    
+
+
 
 
       return this.successResponse("Documents uploaded successfully")
@@ -381,135 +383,161 @@ export class LoanService extends BaseLoanService {
 
   }
 
-  public getBusinessLoanScore = async (id:any) => {
-    try{
-     // console.log(id)
-    let loanDetailsScore: any
+  public getBusinessLoanScore = async (id: any) => {
+    try {
+      // console.log(id)
+      let loanDetailsScore: any
+
+      let genderScore:any
+  //   console.log(getGender)
+  let maritalStatusScore: any
+  // console.log(getMaritalStatusScore)
+  let getAgeScore:any
+      await User.findOne({ _id: id }).cursor().eachAsync(async (model) => {
+        const result = model
+        // console.log(result.gender)
+        // console.log(result.dateOfBirth)
+        genderScore = await this.genderScore(result.gender)
+        //   console.log(getGender)
+        maritalStatusScore = await this.maritialScore(result.maritalStatus)
+        // console.log(getMaritalStatusScore)
+        getAgeScore = await this.ageScore(this._calculateAge(result.dateOfBirth))
+        // console.log(getAgeScore)
+        
+
+      });
+      
+
+      let businessLocationScore: any
+        let residentialStatusScore: any
+        let businessLicScore:any
+
+        let natureOfBusinessScore:any
+        // let x = result.businessDetails.monthlyTurnOver;
+        let crcStatusScore:any
+        let refferralScore:any
       await Loan.find({ userId: id, loanStatus: 'Pending' }).cursor().eachAsync(async (model) => {
-      const result = model.toJSON()
-      let businessLocationScore = await this.businessLocationScore(result.businessDetails.businessLocation);
-      let residentialStatusScore = await this.BusinessResidentialStatus(result.residentialStatus);
-      let businessLicScore = await this.licenseScore(result.businessDetails.referenceNumber);
-      
-      let natureOfBusinessScore = await this.natureOfBusiness(result.businessDetails.natureOfBusiness);
-     // let x = result.businessDetails.monthlyTurnOver;
-     let crcStatusScore = await this.crcStatus("Bad");
-     let refferralScore = await this.businessReferral("Yes");
-     
-     const loanScore = await Loan.findOneAndUpdate(
-      { userId: id, loanStatus: 'In-progress' },
-      {
-        loanCompute: {
-          businessLocationScore,
-          residentialStatusScore,
-          businessLicScore, 
-          natureOfBusinessScore,
-          crcStatusScore,
-          refferralScore
-        },
-      },
-      { new: true },
-    );
-      
-      
-     // let getMonthlyTurnOver = await this.monthlyTurnOver(x)
-     console.log(natureOfBusinessScore)
-     if(loanScore)
-     loanDetailsScore = businessLocationScore + residentialStatusScore + businessLicScore + natureOfBusinessScore + crcStatusScore + refferralScore
-    });
+        const result = model.toJSON()
+         businessLocationScore = await this.businessLocationScore(result.businessDetails.businessLocation);
+         residentialStatusScore = await this.BusinessResidentialStatus(result.residentialStatus);
+         businessLicScore = await this.licenseScore(result.businessDetails.referenceNumber);
 
-    return loanDetailsScore
-    } catch (error) {
-      return "An error occurred"
-    }
- 
-
-
-  }
-
-  public getEmployeeLoanScore = async (id:any) => {
-    try{
-     // console.log(id)
-    let loanDetailsScore: any
-      await Loan.find({ userId: id, loanStatus: 'Pending' }).cursor().eachAsync(async (model) => {
-      const result = model.toJSON()
-     
-      let employeeResidentialStatusScore = await this.residentialStatus(result.residentialStatus);
-      let crcStatusScore = await this.crcStatus("Good");
-      let employementTypeScore = await this.employementType("Government");
-      let refferralScore = await this.employeeReferer("No");
+         natureOfBusinessScore = await this.natureOfBusiness(result.businessDetails.natureOfBusiness);
+        // let x = result.businessDetails.monthlyTurnOver;
+         crcStatusScore = await this.crcStatus("Bad");
+         refferralScore = await this.businessReferral("Yes");
+        
+        
+        // let getMonthlyTurnOver = await this.monthlyTurnOver(x)
+        //console.log(natureOfBusinessScore)
+       
+          loanDetailsScore = businessLocationScore + residentialStatusScore + businessLicScore + natureOfBusinessScore + crcStatusScore + refferralScore +   genderScore + maritalStatusScore + getAgeScore
+      });
 
       const loanScore = await Loan.findOneAndUpdate(
         { userId: id, loanStatus: 'In-progress' },
         {
           loanCompute: {
-            employeeResidentialStatusScore,
-            employementTypeScore, 
+            businessLocationScore,
+            residentialStatusScore,
+            businessLicScore,
+            natureOfBusinessScore,
             crcStatusScore,
             refferralScore
           },
         },
         { new: true },
       );
-    
-     // let x = result.businessDetails.monthlyTurnOver;
-      
-      
-     // let getMonthlyTurnOver = await this.monthlyTurnOver(x)
-     if(loanScore){
-     loanDetailsScore =  employeeResidentialStatusScore + crcStatusScore + employementTypeScore + refferralScore
-     }
-    });
 
-    return loanDetailsScore
+      console.log(genderScore)
+      if (loanScore){
+      return loanDetailsScore
+      }
     } catch (error) {
       return "An error occurred"
     }
- 
+
 
 
   }
 
-  public getCustomerScore = async (id:any) => {
-    try{
-      let customerDetailsScore:any
-     // console.log(id)
-  
-       await User.findOne({ _id: id }).cursor().eachAsync(async (model) => {
+  public getEmployeeLoanScore = async (id: any) => {
+    try {
+     
+      // console.log(id)
+      let loanDetailsScore: any
+  // console.log(result.dateOfBirth)
+  let genderScore:any
+  //   console.log(getGender)
+  let maritalStatusScore: any
+  // console.log(getMaritalStatusScore)
+  let getAgeScore:any
+      await User.findOne({ _id: id }).cursor().eachAsync(async (model) => {
         const result = model
-       // console.log(result.gender)
-       // console.log(result.dateOfBirth)
-        let genderScore = await this.genderScore(result.gender)
-     //   console.log(getGender)
-        let maritalStatusScore =await this.maritialScore(result.maritalStatus)
-       // console.log(getMaritalStatusScore)
-        let getAgeScore = await this.ageScore(this._calculateAge(result.dateOfBirth))
-       // console.log(getAgeScore)
-       const loanScore = await Loan.findOneAndUpdate(
+        // console.log(result.gender)
+        // console.log(result.dateOfBirth)
+        genderScore = await this.genderScore(result.gender)
+        //   console.log(getGender)
+        maritalStatusScore = await this.maritialScore(result.maritalStatus)
+        // console.log(getMaritalStatusScore)
+        getAgeScore = await this.ageScore(this._calculateAge(result.dateOfBirth))
+        // console.log(getAgeScore)
+        
+
+      });
+      
+      let employeeResidentialStatusScore:any
+      let crcStatusScore:any
+      let employementTypeScore:any
+      let refferralScore:any
+      await Loan.find({ userId: id, loanStatus: 'Pending' }).cursor().eachAsync(async (model) => {
+        const result = model.toJSON()
+
+        employeeResidentialStatusScore = await this.residentialStatus(result.residentialStatus);
+        crcStatusScore = await this.crcStatus("Good");
+        employementTypeScore = await this.employementType("Government");
+        refferralScore = await this.employeeReferer("No");
+
+        //console.log(genderScore)
+       
+        // let x = result.businessDetails.monthlyTurnOver;
+
+
+        // let getMonthlyTurnOver = await this.monthlyTurnOver(x)
+        
+          loanDetailsScore = employeeResidentialStatusScore + crcStatusScore + employementTypeScore + refferralScore + genderScore + getAgeScore + maritalStatusScore
+        
+      });
+
+
+      const loanScore = await Loan.findOneAndUpdate(
         { userId: id, loanStatus: 'In-progress' },
         {
           loanCompute: {
+            employeeResidentialStatusScore,
+            employementTypeScore,
+            crcStatusScore,
+            refferralScore,
             genderScore,
-            maritalStatusScore, 
+            maritalStatusScore,
             getAgeScore
           },
         },
         { new: true },
       );
-        
-        if(loanScore)
-        {
-       customerDetailsScore = genderScore + getAgeScore + maritalStatusScore
-        }
-      });
-      return customerDetailsScore
+      console.log(genderScore)
+      if (loanScore) {
+      return loanDetailsScore
+      }
     } catch (error) {
       return "An error occurred"
     }
- 
+
 
 
   }
+
+  
   public processDocumentUpload = async (req: any, res: any) => {
     try {
       const user = req.user;
@@ -733,7 +761,7 @@ export class LoanService extends BaseLoanService {
           { new: true },
         );
         if (loan) {
-         await this.processLoanEvaluation(user._id)
+        // await this.processLoanEvaluation(user._id)
           return this.successResponse("You have successfully placed your loan and it's in progress for approval", loan)
         }
       } else if (forWhom === user.role) {
@@ -1829,16 +1857,35 @@ export class LoanService extends BaseLoanService {
   // }
   public getCustomerCreditReport = async (req: any): Promise<any> => {
     try {
+      
       const { bvn } = req.body
-      const loginData = await this.login()
+    
+       const authBody = {
+        EmailAddress: EmailAddress,
+        Password: CRED_PASSWORD,
+        SubscriberID: SUB_ID,
+      };
+      console.log(authBody)
+      const login = `${BASE_URL}/Agents/Login`
+      //console.log(login)
+    
+        //process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+        const response = await this.apiCall(login, authBody, { "Content-Type": "application/json" }, 'POST')
+        const responseData = await response.json()
+        //console.log(responseData)
+        
+        const loginData = responseData.SessionCode
+     //  const { data } = loginData;
+      console.log(loginData)
       const endPoint = `${BASE_URL}/Customers/FindByBVN2`;
-
-      if (loginData && loginData !== "An error occurred") {
+      console.log(bvn)
+      if (loginData) {
         const requestBody = { MaxRecords: 0, MinRelevance: 0, BVN: bvn, SessionCode: loginData }
+        
         const response = await this.apiCall(endPoint, requestBody, { "Content-Type": "application/json" }, 'POST');
         const responseData = await response.json();
-        const RegistryID = responseData.SearchResult.RegistryID
-
+        const RegistryID = responseData.SearchResult[0].RegistryID
+         //console.log(RegistryID)
         if (RegistryID) {
           const reqBody = {
             SessionCode: loginData,
@@ -1851,42 +1898,27 @@ export class LoanService extends BaseLoanService {
               Reason: "KYCCheck"
             }
           };
-          const customerReport = `${BASE_URL}/Reports/GetData`;
+          const customerReport = `${BASE_URL}/Reports/GetData2`;
           const newResponse = await this.apiCall(customerReport, reqBody, { "Content-Type": "application/json" }, 'POST');
           const newResponseData = await newResponse.json();
-
-          return newResponseData.PerformanceSummary;
-        }
-      } else if (loginData && loginData === "An error occurred") {
-        return { statusCode: 401, message: "Authentication failed", data: null }
-      } else {
-        return { statusCode: 400, message: loginData, data: null }
+          
+        
+          if(newResponseData)
+        
+      {
+        return this.successResponse ("Credit check successful", newResponseData.PerformanceSummary) 
       }
+    }
+  }
     } catch (error) {
       return { statusCode: 500, message: "Internal server error", data: null }
     }
-  }
-
-  public login = async () => {
-    const authBody = {
-      EmailAddress: EmailAddress,
-      Password: CRED_PASSWORD,
-      SubscriberID: SUB_ID,
-    };
-    console.log(authBody)
-    const login = `${BASE_URL}/Agents/Login`
-    console.log(login)
-    try {
-
-      const response = await this.apiCall(login, authBody, { "Content-Type": "application/json" }, 'POST')
-      const responseData = await response.json()
-      const SESSION = responseData.SessionCode
-      return SESSION
-    } catch (error) {
-      return "An error occurred"
-    }
-  };
+      }
+    
+  
 
   
-  
+    
+
+
 }

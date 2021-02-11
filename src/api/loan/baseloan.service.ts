@@ -295,7 +295,7 @@ protected crcStatus = async(crcStatus): Promise<number> =>{
   protected _calculateAge(birthday) { // birthday is a date
     //console.log(Date.now())
   const age =  new Date(Date.now()).getFullYear() - new Date(birthday).getFullYear()
-  console.log(age)
+  //console.log(age)
   return age;
   
 }
